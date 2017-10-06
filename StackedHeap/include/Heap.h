@@ -42,7 +42,7 @@ public:
 
         //Search through list and choose an opening that will fit in between mem blocks
         //Grab the first element if there is one
-        if (_usedBlocks.size() >= 1) {
+        if (_usedBlocks.size() > 1) {
             auto prevMemBlock = _usedBlocks.begin(); //Deference map to value
             std::map<ulonglong, MemBlock> nextBlocks(++_usedBlocks.begin(), _usedBlocks.end()); //Truncate first member
             
@@ -56,7 +56,8 @@ public:
                 if (byteSize <= distanceBetwBlocks) {
                     //Snug that allocation in there
                     block = reinterpret_cast<T*>(&_heap[endOfBlock]); //Convert data stream from unsigned byte to template type
-                    _usedBlocks[(ulonglong)&block[0]] = MemBlock(&_heap[endOfBlock] - &_heap[0], byteSize); //Add to list of used blocks
+                    std::cout << "Added pointer: " << (ulonglong)&block[0] << std::endl;
+					_usedBlocks[(ulonglong)&block[0]] = MemBlock(&_heap[endOfBlock] - &_heap[0], byteSize); //Add to list of used blocks
                     foundBlockOpening = true; //Successfully inserted into a block between 2 allocations
                     break;
                 }
@@ -70,11 +71,6 @@ public:
             allocateBlock(block, byteSize);
         }
 
-        //Display all pointer locations
-        for (auto memBlock : _usedBlocks) {
-            std::cout << memBlock.first << std::endl;
-        }
-
         return block;
     }
 
@@ -82,6 +78,7 @@ public:
     template <typename T>  void allocateBlock(T*& block, ulonglong byteSize) {
         block = reinterpret_cast<T*>(&_heap[_heapPointer]); //Convert data stream from unsigned byte to template type
 
+		std::cout << "Added pointer: " << (ulonglong)&block[0] << std::endl;
         _usedBlocks[(ulonglong)&block[0]] = MemBlock(_heapPointer, byteSize); //Add to list of used blocks
 
         _heapPointer += byteSize; //number of bytes (unsigned chars) allocated so increment pointer
@@ -96,11 +93,38 @@ public:
         auto existingBlock = _usedBlocks.find(pointerAddress);
         if (existingBlock != _usedBlocks.end()) {
             _usedBlocks.erase(existingBlock); //Erase the block so it can be used later
+			std::cout << "Removed pointer: " << pointerAddress << std::endl;
         }
         else { //trying to release memory that is not allocated
-            std::cout << "Removing block that isn't allocated!" << std::endl;
+            std::cout << "Removing block that isn't allocated at " << pointerAddress << std::endl;
+			//Display all pointer locations
+			for (auto memBlock : _usedBlocks) {
+				std::cout << memBlock.first << std::endl;
+			}
         }
+		
+		if (_usedBlocks.size() > 1) {
+			//Adjust _heapPointer tail in case an allocation was removed at the end
+			std::map<ulonglong, MemBlock> nextBlocks(++_usedBlocks.begin(), _usedBlocks.end()); //Truncate first member
+		
+			ulonglong memoryTail = nextBlocks.begin()->second.getBlockPosition() + nextBlocks.begin()->second.getBlockLength();
+			for (auto memBlock : nextBlocks) {
+				ulonglong lastByteLocation = memBlock.second.getBlockPosition() + memBlock.second.getBlockLength();
+				if(memoryTail < lastByteLocation) {
+					memoryTail = lastByteLocation;
+				}
+			}
+			_heapPointer = memoryTail;
+		}
+		else if(_usedBlocks.size() == 1) {
+			_heapPointer = _usedBlocks.begin()->second.getBlockPosition() + _usedBlocks.begin()->second.getBlockLength();
+		}
+		else {
+			_heapPointer = 0;
+		}
     }
+
+	ulonglong getHeapUsed(){ return _heapPointer; }
 
 private:
 
