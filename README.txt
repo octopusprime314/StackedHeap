@@ -1,0 +1,2 @@
+StackedHeap implements a memory manager using an unsigned char array that is preallocated on the stack.  
+The performance gain comes from not querying the operating system for memory by circumventing calling the standard new operator.
