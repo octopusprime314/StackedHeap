@@ -16,60 +16,46 @@ along with StackedHeap.If not, see <http://www.gnu.org/licenses/>.*/
 #include "Heap.h"
 #include <time.h>
 #include <queue>
+#include <exception>
 
 void testHarness() {
 
     Heap heap = Heap::instance();
 
     /***** BEGINNING IMPLEMENTATION FOR RANDOM ALLOC/DEALLOC TESTING ****/
-    ulonglong iterations = 100;
+    ulonglong iterations = 10000;
     srand(static_cast<unsigned int>(time(nullptr)));
 	std::queue<int*> pointerQueue; 
     int* data = nullptr;
-    for (int i = 0; i < iterations; i++) {
-        int randoGen = rand() % 100;
-        if (randoGen % 2 == 0) { //Even allocate
-            data = heap.getBlock<int>(randoGen);
+	int requests;
+    for (requests = 0; requests < iterations; requests++) {
+        int randoGen = (rand() % 15) + 1;
+		if (randoGen % 2 == 0) { //Even allocate
+			try{ //If stack cannot get block then throw exception and catch it
+				data = heap.getBlock<int>(randoGen);
+			}
+			catch(std::exception e){
+				std::cout << e.what() << std::endl;
+				break;
+			}
 			pointerQueue.push(&data[0]);
 		}
-        else {//Odd free allocation
-            if(pointerQueue.size() > 0) { //Make sure item is there
+		else {//Odd free allocation
+			if(pointerQueue.size() > 0) { //Make sure item is there
 				heap.deleteBlock(pointerQueue.front()); //Grab item at the front of queue FIFO
 				pointerQueue.pop(); //Pop item off of queue after deleting it
 			}
 		}
+		
     }
 
-	std::cout << "Size of the heap used in bytes: " << heap.getHeapUsed() << std::endl;
+	std::cout << "Size of the heap used in bytes: " << heap.getHeapUsed() << " after " << requests << " memory allocations" << std::endl;
 }
 
 int main(int argCount, int** argVariables) {
 
 	testHarness();
     
-    //Heap heap = Heap::instance();
-
-    //int* data = heap.getBlock<int>(10); //Alocate 10 integers
-
-    //data[5] = 10;
-
-    //int *data2 = heap.getBlock<int>(5); //Allocate 5 integers
-
-    //data2[2] = 3;
-
-    //int *data3 = heap.getBlock<int>(10); //Allocate 10 integers
-
-    //heap.deleteBlock<int>(data2); //Release data 2 memory
-
-    //int *data4= heap.getBlock<int>(5); //Allocate 5 integers
-
-    //cout << data2[2] << std::endl;
-
-    //data4[2] = 7;
-
-    //cout << data2[2] << std::endl;
-    //cout << data4[2] << std::endl;
-
     //Keep command line open
     unsigned char val;
     cout << "Enter any key and press enter to quit!" << std::endl;

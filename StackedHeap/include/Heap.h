@@ -51,12 +51,12 @@ public:
             for (auto memBlock : nextBlocks) {
                 ulonglong endOfBlock = prevMemBlock->second.getBlockPosition() + prevMemBlock->second.getBlockLength();
                 ulonglong distanceBetwBlocks = memBlock.second.getBlockPosition() - endOfBlock;
-               
+				               
                 //If a block of memory is small enough to fit between two blocks
                 if (byteSize <= distanceBetwBlocks) {
                     //Snug that allocation in there
                     block = reinterpret_cast<T*>(&_heap[endOfBlock]); //Convert data stream from unsigned byte to template type
-                    std::cout << "Added pointer: " << (ulonglong)&block[0] << std::endl;
+                    //std::cout << "Added pointer: " << (ulonglong)&block[0] << std::endl;
 					_usedBlocks[(ulonglong)&block[0]] = MemBlock(&_heap[endOfBlock] - &_heap[0], byteSize); //Add to list of used blocks
                     foundBlockOpening = true; //Successfully inserted into a block between 2 allocations
                     break;
@@ -64,24 +64,28 @@ public:
                 prevMemBlock++;
             }
             if (!foundBlockOpening) { //If an opening was not found then allocate at the end of the stack location
-                allocateBlock(block, byteSize);
+                if(!allocateBlock(block, byteSize)) throw exception("Not enough memory!");
             }
         }
         else { //If unused just allocate a block
-            allocateBlock(block, byteSize);
+            if(!allocateBlock(block, byteSize)) throw exception("Not enough memory!");
         }
 
         return block;
     }
 
     //Allocates a chunk off the stack and modifies reference to a pointer
-    template <typename T>  void allocateBlock(T*& block, ulonglong byteSize) {
+    template <typename T>  bool allocateBlock(T*& block, ulonglong byteSize) {
+		
+		if(_heapPointer + byteSize > HEAP_LENGTH) { //Stack is not big enough to service the memory request
+			return false;
+		}
+
         block = reinterpret_cast<T*>(&_heap[_heapPointer]); //Convert data stream from unsigned byte to template type
-
-		std::cout << "Added pointer: " << (ulonglong)&block[0] << std::endl;
         _usedBlocks[(ulonglong)&block[0]] = MemBlock(_heapPointer, byteSize); //Add to list of used blocks
-
         _heapPointer += byteSize; //number of bytes (unsigned chars) allocated so increment pointer
+
+		return true;
     }
 
     //Opens a block of memory for use
@@ -93,7 +97,7 @@ public:
         auto existingBlock = _usedBlocks.find(pointerAddress);
         if (existingBlock != _usedBlocks.end()) {
             _usedBlocks.erase(existingBlock); //Erase the block so it can be used later
-			std::cout << "Removed pointer: " << pointerAddress << std::endl;
+			//std::cout << "Removed pointer: " << pointerAddress << std::endl;
         }
         else { //trying to release memory that is not allocated
             std::cout << "Removing block that isn't allocated at " << pointerAddress << std::endl;
